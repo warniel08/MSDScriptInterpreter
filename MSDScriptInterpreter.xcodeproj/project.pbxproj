@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4A9B088A24137C5F0084A029 /* env.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4A9B088824137C5F0084A029 /* env.cpp */; };
+		4A9B088B24137CAE0084A029 /* env.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4A9B088824137C5F0084A029 /* env.cpp */; };
 		4AF0C3DC23EBDA7F00E42B69 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4AF0C3DB23EBDA7F00E42B69 /* main.cpp */; };
 		4AF0C3E723EBDB0100E42B69 /* parse.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4AF0C3E523EBDB0100E42B69 /* parse.cpp */; };
 		4AF0C3EA23EBDB1000E42B69 /* expr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4AF0C3E823EBDB1000E42B69 /* expr.cpp */; };
@@ -31,6 +33,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		4A9B088724137C220084A029 /* pointer.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = pointer.hpp; sourceTree = "<group>"; };
+		4A9B088824137C5F0084A029 /* env.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = env.cpp; sourceTree = "<group>"; };
+		4A9B088924137C5F0084A029 /* env.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = env.hpp; sourceTree = "<group>"; };
 		4AF0C3D823EBDA7F00E42B69 /* MSDScriptInterpreter */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MSDScriptInterpreter; sourceTree = BUILT_PRODUCTS_DIR; };
 		4AF0C3DB23EBDA7F00E42B69 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		4AF0C3E523EBDB0100E42B69 /* parse.cpp */ = {isa = PBXFileReference; indentWidth = 2; lastKnownFileType = sourcecode.cpp.cpp; path = parse.cpp; sourceTree = "<group>"; tabWidth = 2; };
@@ -94,6 +99,9 @@
 				4AF0C3EB23EBDB2200E42B69 /* value.cpp */,
 				4AF0C3EC23EBDB2200E42B69 /* value.hpp */,
 				4AF0C3EF23EBDB3100E42B69 /* catch.hpp */,
+				4A9B088724137C220084A029 /* pointer.hpp */,
+				4A9B088824137C5F0084A029 /* env.cpp */,
+				4A9B088924137C5F0084A029 /* env.hpp */,
 			);
 			path = MSDScriptInterpreter;
 			sourceTree = "<group>";
@@ -200,6 +208,7 @@
 				4AF0C3DC23EBDA7F00E42B69 /* main.cpp in Sources */,
 				4AF0C3E723EBDB0100E42B69 /* parse.cpp in Sources */,
 				4AF0C3EA23EBDB1000E42B69 /* expr.cpp in Sources */,
+				4A9B088A24137C5F0084A029 /* env.cpp in Sources */,
 				4AF0C3ED23EBDB2200E42B69 /* value.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -211,6 +220,7 @@
 				4AF0C40223EBDD4A00E42B69 /* run.cpp in Sources */,
 				4AF0C3F823EBDC7800E42B69 /* test.m in Sources */,
 				4AF0C3FD23EBDCD300E42B69 /* parse.cpp in Sources */,
+				4A9B088B24137CAE0084A029 /* env.cpp in Sources */,
 				4AF0C3FE23EBDCD800E42B69 /* expr.cpp in Sources */,
 				4AF0C3FF23EBDCDC00E42B69 /* value.cpp in Sources */,
 			);

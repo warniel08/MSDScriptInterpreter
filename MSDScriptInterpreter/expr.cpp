@@ -8,29 +8,32 @@
 
 #include "expr.hpp"
 #include "catch.hpp"
+#include "value.hpp"
+#include "env.hpp"
 
 NumExpr::NumExpr(int rep) {
   this->rep = rep;
+  val = NEW(NumVal)(rep);
 }
 
-bool NumExpr::equals(Expr *e) {
-  NumExpr *n = dynamic_cast<NumExpr*>(e);
+bool NumExpr::equals(PTR(Expr) e) {
+  PTR(NumExpr) n = CAST(NumExpr)(e);
   if (n == NULL)
     return false;
   else
     return rep == n->rep;
 }
 
-Val *NumExpr::interp() {
-  return new NumVal(rep);
+PTR(Val) NumExpr::interp(PTR(Env) env) {
+  return val;
 }
 
-Expr *NumExpr::subst(std::string var, Val *new_val) {
-  return new NumExpr(rep);
+PTR(Expr) NumExpr::subst(std::string var, PTR(Val) new_val) {
+  return NEW(NumExpr)(rep);
 }
 
-Expr *NumExpr::optimize() {
-  return new NumExpr(rep);
+PTR(Expr) NumExpr::optimize() {
+  return NEW(NumExpr)(rep);
 }
 
 
@@ -42,35 +45,35 @@ std::string NumExpr::to_string() {
   return std::to_string(rep);
 }
 
-AddExpr::AddExpr(Expr *lhs, Expr *rhs) {
+AddExpr::AddExpr(PTR(Expr) lhs, PTR(Expr) rhs) {
   this->lhs = lhs;
   this->rhs = rhs;
 }
 
-bool AddExpr::equals(Expr *e) {
-  AddExpr *a = dynamic_cast<AddExpr*>(e);
+bool AddExpr::equals(PTR(Expr) e) {
+  PTR(AddExpr) a = CAST(AddExpr)(e);
   if (a == NULL)
     return false;
   else
     return (lhs->equals(a->lhs) && rhs->equals(a->rhs));
 }
 
-Val *AddExpr::interp() {
-  return lhs->interp()->add_to(rhs->interp());
+PTR(Val) AddExpr::interp(PTR(Env) env) {
+  return lhs->interp(env)->add_to(rhs->interp(env));
 }
 
-Expr *AddExpr::subst(std::string var, Val *new_val) {
-  return new AddExpr(lhs->subst(var, new_val),
+PTR(Expr) AddExpr::subst(std::string var, PTR(Val) new_val) {
+  return NEW(AddExpr)(lhs->subst(var, new_val),
                      (rhs->subst(var, new_val)));
 }
 
-Expr *AddExpr::optimize() {
-  Expr *olhs = lhs->optimize();
-  Expr *orhs = rhs->optimize();
+PTR(Expr) AddExpr::optimize() {
+  PTR(Expr) olhs = lhs->optimize();
+  PTR(Expr) orhs = rhs->optimize();
   if (!olhs->containsVarExpr() && !orhs->containsVarExpr())
-    return olhs->interp()->add_to(orhs->interp())->to_expr();
+    return olhs->interp(NEW(EmptyEnv)())->add_to(orhs->interp(NEW(EmptyEnv)()))->to_expr();
   else
-    return new AddExpr(olhs, orhs);
+    return NEW(AddExpr)(olhs, orhs);
 }
 
 bool AddExpr::containsVarExpr() {
@@ -81,34 +84,35 @@ std::string AddExpr::to_string() {
   return "(" + lhs->to_string() + " + " + rhs->to_string() + ")";
 }
 
-MultExpr::MultExpr(Expr *lhs, Expr *rhs) {
+MultExpr::MultExpr(PTR(Expr) lhs, PTR(Expr) rhs) {
   this->lhs = lhs;
   this->rhs = rhs;
 }
 
-bool MultExpr::equals(Expr *e) {
-  MultExpr *m = dynamic_cast<MultExpr*>(e);
+bool MultExpr::equals(PTR(Expr) e) {
+  PTR(MultExpr) m = CAST(MultExpr)(e);
   if (m == NULL)
     return false;
   else
     return (lhs->equals(m->lhs) && rhs->equals(m->rhs));
 }
 
-Val *MultExpr::interp() {
-  return lhs->interp()->mult_with(rhs->interp());
+PTR(Val) MultExpr::interp(PTR(Env) env) {
+  return lhs->interp(env)->mult_with(rhs->interp(env));
 }
 
-Expr *MultExpr::subst(std::string var, Val *new_val) {
-  return new MultExpr(lhs->subst(var, new_val), rhs->subst(var, new_val));
+PTR(Expr) MultExpr::subst(std::string var, PTR(Val) new_val) {
+  return NEW(MultExpr)(lhs->subst(var, new_val),
+                      rhs->subst(var, new_val));
 }
 
-Expr *MultExpr::optimize() {
-  Expr *olhs = lhs->optimize();
-  Expr *orhs = rhs->optimize();
+PTR(Expr) MultExpr::optimize() {
+  PTR(Expr) olhs = lhs->optimize();
+  PTR(Expr) orhs = rhs->optimize();
   if (!olhs->containsVarExpr() && !orhs->containsVarExpr())
-    return olhs->interp()->mult_with(orhs->interp())->to_expr();
+    return olhs->interp(NEW(EmptyEnv)())->mult_with(orhs->interp(NEW(EmptyEnv)()))->to_expr();
   else
-    return new MultExpr(olhs->optimize(), orhs->optimize());
+    return NEW(MultExpr)(olhs->optimize(), orhs->optimize());
 }
 
 bool MultExpr::containsVarExpr() {
@@ -123,27 +127,27 @@ VarExpr::VarExpr(std::string name) {
   this->name = name;
 }
 
-bool VarExpr::equals(Expr *e) {
-  VarExpr *v = dynamic_cast<VarExpr*>(e);
+bool VarExpr::equals(PTR(Expr) e) {
+  PTR(VarExpr) v = CAST(VarExpr)(e);
   if (v == NULL)
     return false;
   else
     return name.compare(v->name) == 0;
 }
 
-Val *VarExpr::interp() {
-  throw std::runtime_error("cannot calculate with unknown vars");
+PTR(Val) VarExpr::interp(PTR(Env) env) {
+  return env->lookup(name);
 }
 
-Expr *VarExpr::subst(std::string var, Val *new_val) {
+PTR(Expr) VarExpr::subst(std::string var, PTR(Val) new_val) {
   if (name == var)
     return new_val->to_expr();
   else
-    return new VarExpr(name);
+    return NEW(VarExpr)(name);
 }
 
-Expr *VarExpr::optimize() {
-  return new VarExpr(name);
+PTR(Expr) VarExpr::optimize() {
+  return NEW(VarExpr)(name);
 }
 
 bool VarExpr::containsVarExpr() {
@@ -154,42 +158,44 @@ std::string VarExpr::to_string() {
   return name;
 }
 
-LetExpr::LetExpr(std::string name, Expr *rhs, Expr *body) {
+LetExpr::LetExpr(std::string name, PTR(Expr) rhs, PTR(Expr) body) {
   this->name = name;
   this->rhs = rhs;
   this->body = body;
 }
 
-bool LetExpr::equals(Expr *e) {
-  LetExpr *l = dynamic_cast<LetExpr*>(e);
+bool LetExpr::equals(PTR(Expr) e) {
+  PTR(LetExpr) l = CAST(LetExpr)(e);
   if (l == NULL)
     return false;
   else
     return (name == l->name && rhs->equals(l->rhs) && body->equals(l->body));
 }
 
-Val *LetExpr::interp() {
-  return body->subst(name, rhs->interp())->interp();
+PTR(Val) LetExpr::interp(PTR(Env) env) {
+  PTR(Val) rhs_val = rhs->interp(env);
+  PTR(Env) new_env = NEW(ExtendedEnv) (name, rhs_val, env);
+  return body->interp(new_env);
 }
 
-Expr *LetExpr::subst(std::string var, Val *new_val) {
+PTR(Expr) LetExpr::subst(std::string var, PTR(Val) new_val) {
   if (name == var)
-    return new LetExpr(name, rhs->subst(var, new_val), body->subst(var, new_val));
+    return NEW(LetExpr)(name, rhs->subst(var, new_val), body->subst(var, new_val));
   else
-    return new LetExpr(name, rhs->subst(var, new_val), body);
+    return NEW(LetExpr)(name, rhs->subst(var, new_val), body);
 }
 
 bool LetExpr::containsVarExpr() {
   return true;
 }
 
-Expr *LetExpr::optimize() {
-  Expr *orhs = rhs->optimize();
+PTR(Expr) LetExpr::optimize() {
+  PTR(Expr) orhs = rhs->optimize();
   
   if (orhs->containsVarExpr()) {
-    return new LetExpr(name, orhs, body->optimize());
+    return NEW(LetExpr)(name, orhs, body->optimize());
   } else {
-    return body->subst(name, orhs->interp())->optimize();
+    return body->subst(name, orhs->interp(NEW(EmptyEnv)()))->optimize();
   }
 }
 
@@ -201,24 +207,24 @@ BoolExpr::BoolExpr(bool rep) {
   this->rep = rep;
 }
 
-bool BoolExpr::equals(Expr *e) {
-  BoolExpr *b = dynamic_cast<BoolExpr*>(e);
+bool BoolExpr::equals(PTR(Expr) e) {
+  PTR(BoolExpr) b = CAST(BoolExpr)(e);
   if (b == NULL)
     return false;
   else
     return rep == b->rep;
 }
 
-Val *BoolExpr::interp() {
-  return new BoolVal(rep);
+PTR(Val) BoolExpr::interp(PTR(Env) env) {
+  return NEW(BoolVal)(rep);
 }
 
-Expr *BoolExpr::subst(std::string var, Val *new_val) {
-  return new BoolExpr(rep);
+PTR(Expr) BoolExpr::subst(std::string var, PTR(Val) new_val) {
+  return NEW(BoolExpr)(rep);
 }
 
-Expr *BoolExpr::optimize() {
-  return new BoolExpr(rep);
+PTR(Expr) BoolExpr::optimize() {
+  return NEW(BoolExpr)(rep);
 }
 
 
@@ -228,46 +234,46 @@ bool BoolExpr::containsVarExpr() {
 
 std::string BoolExpr::to_string() {
   if (rep)
-    return "(_true)";
+    return "_true";
   else
-    return "(_false)";
+    return "_false";
 }
 
-IfExpr::IfExpr(Expr *test_part, Expr *then_part, Expr *else_part) {
+IfExpr::IfExpr(PTR(Expr) test_part, PTR(Expr) then_part, PTR(Expr) else_part) {
   this->test_part = test_part;
   this->then_part = then_part;
   this->else_part = else_part;
 }
 
-bool IfExpr::equals(Expr *e) {
-  IfExpr *ie = dynamic_cast<IfExpr*>(e);
+bool IfExpr::equals(PTR(Expr) e) {
+  PTR(IfExpr) ie = CAST(IfExpr)(e);
   if (ie == NULL)
     return false;
   else
     return (test_part->equals(ie->test_part) && then_part->equals(ie->then_part) && else_part->equals(ie->else_part));
 }
 
-Val *IfExpr::interp() {
-  if (test_part->interp()->is_true())
-    return then_part->interp();
+PTR(Val) IfExpr::interp(PTR(Env) env) {
+  if (test_part->interp(env)->is_true())
+    return then_part->interp(env);
   else
-    return else_part->interp();
+    return else_part->interp(env);
 }
 
-Expr *IfExpr::subst(std::string var, Val *new_val) {
-  return new IfExpr(test_part->subst(var, new_val), then_part->subst(var, new_val), else_part->subst(var, new_val));
+PTR(Expr) IfExpr::subst(std::string var, PTR(Val) new_val) {
+  return NEW(IfExpr)(test_part->subst(var, new_val), then_part->subst(var, new_val), else_part->subst(var, new_val));
 }
 
-Expr *IfExpr::optimize() {
+PTR(Expr) IfExpr::optimize() {
   if (!test_part->containsVarExpr()) {
-    if (test_part->interp()->is_true()) {
+    if (test_part->interp(NEW(EmptyEnv)())->is_true()) {
       return then_part->optimize();
     } else {
       return else_part->optimize();
     }
   }
 
-  return new IfExpr(test_part->optimize(), then_part->optimize(), else_part->optimize());
+  return NEW(IfExpr)(test_part->optimize(), then_part->optimize(), else_part->optimize());
 }
 
 bool IfExpr::containsVarExpr() {
@@ -278,32 +284,32 @@ std::string IfExpr::to_string() {
   return "(_if " + test_part->to_string() + " _then " + then_part->to_string() + " _else " + else_part->to_string() + ")";
 }
 
-CompExpr::CompExpr(Expr *lhs, Expr *rhs) {
+CompExpr::CompExpr(PTR(Expr) lhs, PTR(Expr) rhs) {
   this->lhs = lhs;
   this->rhs = rhs;
 }
 
-bool CompExpr::equals(Expr *e) {
-  CompExpr *ce = dynamic_cast<CompExpr*>(e);
+bool CompExpr::equals(PTR(Expr) e) {
+  PTR(CompExpr) ce = CAST(CompExpr)(e);
   if (ce == NULL)
     return false;
   else
     return (lhs->equals(ce->lhs) && rhs->equals(ce->rhs));
 }
 
-Val *CompExpr::interp() {
-  return new BoolVal(lhs->interp()->equals(rhs->interp()));
+PTR(Val) CompExpr::interp(PTR(Env) env) {
+  return NEW(BoolVal)(lhs->interp(env)->equals(rhs->interp(env)));
 }
 
-Expr *CompExpr::subst(std::string var, Val *new_val) {
-  return new CompExpr(lhs->subst(var, new_val), rhs->subst(var, new_val));
+PTR(Expr) CompExpr::subst(std::string var, PTR(Val) new_val) {
+  return NEW(CompExpr)(lhs->subst(var, new_val), rhs->subst(var, new_val));
 }
 
-Expr *CompExpr::optimize() {
+PTR(Expr) CompExpr::optimize() {
   if (lhs->containsVarExpr() || rhs->containsVarExpr())
-    return new CompExpr(lhs->optimize(), rhs->optimize());
+    return NEW(CompExpr)(lhs->optimize(), rhs->optimize());
   else
-    return new BoolExpr(lhs->interp()->equals(rhs->interp()));
+    return NEW(BoolExpr)(lhs->interp(NEW(EmptyEnv)())->equals(rhs->interp(NEW(EmptyEnv)())));
 }
 
 bool CompExpr::containsVarExpr() {
@@ -314,33 +320,33 @@ std::string CompExpr::to_string() {
   return "(" + lhs->to_string() + " == " + rhs->to_string() + ")";
 }
 
-FunExpr::FunExpr(std::string formal_arg, Expr *body) {
+FunExpr::FunExpr(std::string formal_arg, PTR(Expr) body) {
   this->formal_arg = formal_arg;
   this->body = body;
 }
 
-bool FunExpr::equals(Expr *e) {
-  FunExpr *fe = dynamic_cast<FunExpr*>(e);
+bool FunExpr::equals(PTR(Expr) e) {
+  PTR(FunExpr) fe = CAST(FunExpr)(e);
   if (fe == NULL)
     return false;
   else
     return (formal_arg == fe->formal_arg && body->equals(fe->body));
 }
 
-Val *FunExpr::interp() {
-  return new FunVal(formal_arg, body);
+PTR(Val) FunExpr::interp(PTR(Env) env) {
+  return NEW(FunVal)(formal_arg, body, env);
 }
 
-Expr *FunExpr::subst(std::string var, Val *new_val) {
+PTR(Expr) FunExpr::subst(std::string var, PTR(Val) new_val) {
   if( var == formal_arg) {
-    return new FunExpr(formal_arg, body);
+    return NEW(FunExpr)(formal_arg, body);
   }
   
-  return new FunExpr(formal_arg, body->subst(var, new_val));
+  return NEW(FunExpr)(formal_arg, body->subst(var, new_val));
 }
 
-Expr *FunExpr::optimize() {
-  return new FunExpr(formal_arg, body->optimize());
+PTR(Expr) FunExpr::optimize() {
+  return NEW(FunExpr)(formal_arg, body->optimize());
 }
 
 bool FunExpr::containsVarExpr() {
@@ -351,29 +357,29 @@ std::string FunExpr::to_string() {
   return "(_fun (" + formal_arg + ") " + body->to_string() + ")";
 }
 
-CallExpr::CallExpr(Expr *to_be_called, Expr *actual_arg) {
+CallExpr::CallExpr(PTR(Expr) to_be_called, PTR(Expr) actual_arg) {
   this->to_be_called = to_be_called;
   this->actual_arg = actual_arg;
 }
 
-bool CallExpr::equals(Expr *e) {
-  CallExpr *ce = dynamic_cast<CallExpr*>(e);
+bool CallExpr::equals(PTR(Expr) e) {
+  PTR(CallExpr) ce = CAST(CallExpr)(e);
   if (ce == NULL)
     return false;
   else
     return (to_be_called->equals(ce->to_be_called) && actual_arg->equals(ce->actual_arg));
 }
 
-Val *CallExpr::interp() {
-  return to_be_called->interp()->call(actual_arg->interp());
+PTR(Val) CallExpr::interp(PTR(Env) env) {
+  return to_be_called->interp(env)->call(actual_arg->interp(env));
 }
 
-Expr *CallExpr::subst(std::string var, Val *new_val) {
-  return new CallExpr(to_be_called->subst(var, new_val), actual_arg->subst(var, new_val));
+PTR(Expr) CallExpr::subst(std::string var, PTR(Val) new_val) {
+  return NEW(CallExpr)(to_be_called->subst(var, new_val), actual_arg->subst(var, new_val));
 }
 
-Expr *CallExpr::optimize() {
-  return new CallExpr(to_be_called->optimize(), actual_arg->optimize());
+PTR(Expr) CallExpr::optimize() {
+  return NEW(CallExpr)(to_be_called->optimize(), actual_arg->optimize());
 }
 
 bool CallExpr::containsVarExpr() {
@@ -386,430 +392,446 @@ std::string CallExpr::to_string() {
 
 TEST_CASE( "NumExpr" ) {
   SECTION( "equals" ) {
-    CHECK( (new NumExpr(1))->equals(new NumExpr(1)) );
-    CHECK( ! (new NumExpr(1))->equals(new NumExpr(2)) );
-    CHECK( ! (new NumExpr(1))->equals(new MultExpr(new NumExpr(2), new NumExpr(4))) );
+    CHECK( (NEW(NumExpr)(1))->equals(NEW(NumExpr)(1)) );
+    CHECK( ! (NEW(NumExpr)(1))->equals(NEW(NumExpr)(2)) );
+    CHECK( ! (NEW(NumExpr)(1))->equals(NEW(MultExpr)(NEW(NumExpr)(2), NEW(NumExpr)(4))) );
   }
   
   SECTION( "interp" ) {
-    CHECK( (new NumExpr(10))->interp()->equals(new NumVal(10)) );
+    CHECK( (NEW(NumExpr)(10))->interp(NEW(EmptyEnv)())->equals(NEW(NumVal)(10)) );
   }
   
   SECTION( "subst" ) {
-    CHECK( (new NumExpr(10))->subst("x", new NumVal(4))
-          ->equals(new NumExpr(10)) );
+    CHECK( (NEW(NumExpr)(10))->subst("x", NEW(NumVal)(4))
+          ->equals(NEW(NumExpr)(10)) );
   }
   SECTION( "containsVarExpr" ) {
-    CHECK( ! (new NumExpr(10))->containsVarExpr() );
+    CHECK( ! (NEW(NumExpr)(10))->containsVarExpr() );
   }
   
   SECTION( "to_string" ) {
-    CHECK( (new NumExpr(4))->to_string()
+    CHECK( (NEW(NumExpr)(4))->to_string()
     == ("4") );
   }
 }
 
 TEST_CASE( "VarExpr" ) {
   SECTION( "equals" ) {
-    CHECK( (new VarExpr("x"))->equals(new VarExpr("x")) );
-    CHECK( ! (new VarExpr("x"))->equals(new NumExpr(5)) );
+    CHECK( (NEW(VarExpr)("x"))->equals(NEW(VarExpr)("x")) );
+    CHECK( ! (NEW(VarExpr)("x"))->equals(NEW(NumExpr)(5)) );
   }
   
   SECTION( "interp" ) {
-    CHECK_THROWS( (new VarExpr("fish"))->interp() );
+    CHECK_THROWS( (NEW(VarExpr)("fish"))->interp(NEW(EmptyEnv)()) );
+    CHECK( (NEW(VarExpr)("fish"))->interp(NEW(ExtendedEnv)("fish",
+                                                          NEW(NumVal)(12), NEW(EmptyEnv)()))
+                                              ->equals(NEW(NumVal)(12)) );
+    
   }
   
   SECTION( "subst" ) {
-    CHECK( (new VarExpr("fish"))->subst("dog", new NumVal(4))
-          ->equals(new VarExpr("fish")) );
-    CHECK( (new VarExpr("dog"))->subst("dog", new NumVal(4))
-          ->equals(new NumExpr(4)) );
-    CHECK( (new VarExpr("dog"))->subst("dog", new BoolVal(true))
-          ->equals(new BoolExpr(true)) );
-    CHECK( (new VarExpr("x"))->subst("x", new NumVal(10))
-          ->equals(new NumExpr(10)) );
+    CHECK( (NEW(VarExpr)("fish"))->subst("dog", NEW(NumVal)(4))
+          ->equals(NEW(VarExpr)("fish")) );
+    CHECK( (NEW(VarExpr)("dog"))->subst("dog", NEW(NumVal)(4))
+          ->equals(NEW(NumExpr)(4)) );
+    CHECK( (NEW(VarExpr)("dog"))->subst("dog", NEW(BoolVal)(true))
+          ->equals(NEW(BoolExpr)(true)) );
+    CHECK( (NEW(VarExpr)("x"))->subst("x", NEW(NumVal)(10))
+          ->equals(NEW(NumExpr)(10)) );
   }
   
   SECTION( "containsVarExpr" ) {
-    CHECK( (new VarExpr("beef"))->containsVarExpr() );
+    CHECK( (NEW(VarExpr)("beef"))->containsVarExpr() );
   }
   
   SECTION( "to_string" ) {
-    CHECK( (new VarExpr("frog"))->to_string()
+    CHECK( (NEW(VarExpr)("frog"))->to_string()
           != ("frg") );
-    CHECK( (new VarExpr("frog"))->to_string()
+    CHECK( (NEW(VarExpr)("frog"))->to_string()
           == ("frog") );
   }
 }
 
 TEST_CASE( "AddExpr" ) {
   SECTION( "equals" ) {
-    CHECK( (new AddExpr(new NumExpr(8), new NumExpr(9)))
-          ->equals(new AddExpr(new NumExpr(8), new NumExpr(9))) );
-    CHECK( ! (new AddExpr(new NumExpr(8), new NumExpr(9)))
-          ->equals(new AddExpr(new NumExpr(8), new NumExpr(10))) );
-    CHECK( ! (new AddExpr(new NumExpr(8), new NumExpr(9)))
-          ->equals(new AddExpr(new NumExpr(10), new NumExpr(9))) );
-    CHECK( ! (new AddExpr(new NumExpr(8), new NumExpr(9)))
-          ->equals(new NumExpr(8)) );
+    CHECK( (NEW(AddExpr)(NEW(NumExpr)(8), NEW(NumExpr)(9)))
+          ->equals(NEW(AddExpr)(NEW(NumExpr)(8), NEW(NumExpr)(9))) );
+    CHECK( ! (NEW(AddExpr)(NEW(NumExpr)(8), NEW(NumExpr)(9)))
+          ->equals(NEW(AddExpr)(NEW(NumExpr)(8), NEW(NumExpr)(10))) );
+    CHECK( ! (NEW(AddExpr)(NEW(NumExpr)(8), NEW(NumExpr)(9)))
+          ->equals(NEW(AddExpr)(NEW(NumExpr)(10), NEW(NumExpr)(9))) );
+    CHECK( ! (NEW(AddExpr)(NEW(NumExpr)(8), NEW(NumExpr)(9)))
+          ->equals(NEW(NumExpr)(8)) );
   }
   
   SECTION( "interp" ) {
-    CHECK( (new AddExpr(new NumExpr(3), new NumExpr(2)))->interp()
-          ->equals(new NumVal(5)) );
+    CHECK( (NEW(AddExpr)(NEW(NumExpr)(3), NEW(NumExpr)(2)))->interp(NEW(EmptyEnv)())
+          ->equals(NEW(NumVal)(5)) );
+    CHECK( (NEW(AddExpr)(NEW(VarExpr)("x"), NEW(VarExpr)("y")))
+            ->interp(NEW(ExtendedEnv)("x", NEW(NumVal)(4),
+                                              NEW(ExtendedEnv)("y", NEW(NumVal)(3),
+                                                  NEW(EmptyEnv)())))
+          ->equals(NEW(NumVal)(7)) );
   }
   
   SECTION( "subst" ) {
-    CHECK( (new AddExpr(new NumExpr(4), new VarExpr("yak")))->subst("yak", new NumVal(7))
-          ->equals(new AddExpr(new NumExpr(4), new NumExpr(7))) );
-    CHECK( (new AddExpr(new VarExpr("x"), new NumExpr(4)))->subst("x", new NumVal(3))
-          ->equals(new AddExpr(new NumExpr(3), new NumExpr(4))) );
+    CHECK( (NEW(AddExpr)(NEW(NumExpr)(4), NEW(VarExpr)("yak")))->subst("yak", NEW(NumVal)(7))
+          ->equals(NEW(AddExpr)(NEW(NumExpr)(4), NEW(NumExpr)(7))) );
+    CHECK( (NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(4)))->subst("x", NEW(NumVal)(3))
+          ->equals(NEW(AddExpr)(NEW(NumExpr)(3), NEW(NumExpr)(4))) );
   }
   
   SECTION( "optimize" ) {
-    CHECK( (new AddExpr(new VarExpr("dog"), new NumExpr(9)))->optimize()
-          ->equals(new AddExpr(new VarExpr("dog"), new NumExpr(9))) );
-    CHECK( (new AddExpr(new NumExpr(1), new NumExpr(9)))->optimize()
-          ->equals(new NumExpr(10)) );
+    CHECK( (NEW(AddExpr)(NEW(VarExpr)("dog"), NEW(NumExpr)(9)))->optimize()
+          ->equals(NEW(AddExpr)(NEW(VarExpr)("dog"), NEW(NumExpr)(9))) );
+    CHECK( (NEW(AddExpr)(NEW(NumExpr)(1), NEW(NumExpr)(9)))->optimize()
+          ->equals(NEW(NumExpr)(10)) );
   }
   
   SECTION( "containsVarExpr" ) {
-    CHECK( (new AddExpr(new NumExpr(10), new VarExpr("e")))->containsVarExpr() );
-    CHECK( !(new AddExpr(new NumExpr(10), new NumExpr(3)))->containsVarExpr() );
+    CHECK( (NEW(AddExpr)(NEW(NumExpr)(10), NEW(VarExpr)("e")))->containsVarExpr() );
+    CHECK( !(NEW(AddExpr)(NEW(NumExpr)(10), NEW(NumExpr)(3)))->containsVarExpr() );
   }
   
   SECTION( "to_string" ) {
-    CHECK( (new AddExpr(new VarExpr("dog"), new NumExpr(3)))->to_string()
+    CHECK( (NEW(AddExpr)(NEW(VarExpr)("dog"), NEW(NumExpr)(3)))->to_string()
           == ("(dog + 3)") );
-    CHECK( (new AddExpr(new NumExpr(5), new NumExpr(3)))->to_string()
+    CHECK( (NEW(AddExpr)(NEW(NumExpr)(5), NEW(NumExpr)(3)))->to_string()
           == ("(5 + 3)") );
   }
 }
 
 TEST_CASE( "MultExpr" ) {
   SECTION( "equals" ) {
-    CHECK( (new MultExpr(new NumExpr(8), new NumExpr(9)))
-          ->equals(new MultExpr(new NumExpr(8), new NumExpr(9))) );
-    CHECK( ! (new MultExpr(new NumExpr(8), new NumExpr(9)))
-          ->equals(new MultExpr(new NumExpr(8), new NumExpr(10))) );
-    CHECK( ! (new MultExpr(new NumExpr(8), new NumExpr(9)))
-          ->equals(new MultExpr(new NumExpr(10), new NumExpr(9))) );
-    CHECK( ! (new MultExpr(new NumExpr(8), new NumExpr(9)))
-          ->equals(new NumExpr(8)) );
+    CHECK( (NEW(MultExpr)(NEW(NumExpr)(8), NEW(NumExpr)(9)))
+          ->equals(NEW(MultExpr)(NEW(NumExpr)(8), NEW(NumExpr)(9))) );
+    CHECK( ! (NEW(MultExpr)(NEW(NumExpr)(8), NEW(NumExpr)(9)))
+          ->equals(NEW(MultExpr)(NEW(NumExpr)(8), NEW(NumExpr)(10))) );
+    CHECK( ! (NEW(MultExpr)(NEW(NumExpr)(8), NEW(NumExpr)(9)))
+          ->equals(NEW(MultExpr)(NEW(NumExpr)(10), NEW(NumExpr)(9))) );
+    CHECK( ! (NEW(MultExpr)(NEW(NumExpr)(8), NEW(NumExpr)(9)))
+          ->equals(NEW(NumExpr)(8)) );
   }
   
   SECTION( "interp" ) {
-    CHECK( (new MultExpr(new NumExpr(3), new NumExpr(2)))->interp()
-          ->equals(new NumVal(6)) );
+    CHECK( (NEW(MultExpr)(NEW(NumExpr)(3), NEW(NumExpr)(2)))->interp(NEW(EmptyEnv)())
+          ->equals(NEW(NumVal)(6)) );
   }
   
   SECTION( "subst" ) {
-    CHECK( (new MultExpr(new NumExpr(2), new VarExpr("dog")))->subst("dog", new NumVal(3))
-          ->equals(new MultExpr(new NumExpr(2), new NumExpr(3))) );
+    CHECK( (NEW(MultExpr)(NEW(NumExpr)(2), NEW(VarExpr)("dog")))->subst("dog", NEW(NumVal)(3))
+          ->equals(NEW(MultExpr)(NEW(NumExpr)(2), NEW(NumExpr)(3))) );
   }
   
   SECTION( "optimize" ) {
-    CHECK( (new MultExpr(new VarExpr("dog"), new NumExpr(9)))->optimize()
-          ->equals(new MultExpr(new VarExpr("dog"), new NumExpr(9))) );
+    CHECK( (NEW(MultExpr)(NEW(VarExpr)("dog"), NEW(NumExpr)(9)))->optimize()
+          ->equals(NEW(MultExpr)(NEW(VarExpr)("dog"), NEW(NumExpr)(9))) );
   }
   
   SECTION( "containsVarExpr" ) {
-    CHECK( (new MultExpr(new NumExpr(10), new VarExpr("e")))->containsVarExpr() );
-    CHECK( !(new MultExpr(new NumExpr(10), new NumExpr(3)))->containsVarExpr() );
+    CHECK( (NEW(MultExpr)(NEW(NumExpr)(10), NEW(VarExpr)("e")))->containsVarExpr() );
+    CHECK( !(NEW(MultExpr)(NEW(NumExpr)(10), NEW(NumExpr)(3)))->containsVarExpr() );
   }
   
   SECTION( "to_string" ) {
-    CHECK( (new MultExpr(new VarExpr("dog"), new NumExpr(3)))->to_string()
+    CHECK( (NEW(MultExpr)(NEW(VarExpr)("dog"), NEW(NumExpr)(3)))->to_string()
           == ("(dog * 3)") );
-    CHECK( (new MultExpr(new NumExpr(5), new NumExpr(3)))->to_string()
+    CHECK( (NEW(MultExpr)(NEW(NumExpr)(5), NEW(NumExpr)(3)))->to_string()
           == ("(5 * 3)") );
   }
 }
 
 TEST_CASE( "LetExpr" ) {
   SECTION( "equals" ) {
-    CHECK( (new LetExpr("x", new NumExpr(3), new AddExpr(new NumExpr(2), new NumExpr(3))))
-          ->equals(new LetExpr("x", new NumExpr(3), new AddExpr(new NumExpr(2), new NumExpr(3)))) );
-    CHECK( ! (new LetExpr("x", new NumExpr(3), new AddExpr(new NumExpr(2), new NumExpr(3))))
-          ->equals(new VarExpr("y")) );
+    CHECK( (NEW(LetExpr)("x", NEW(NumExpr)(3), NEW(AddExpr)(NEW(NumExpr)(2), NEW(NumExpr)(3))))
+          ->equals(NEW(LetExpr)("x", NEW(NumExpr)(3), NEW(AddExpr)(NEW(NumExpr)(2), NEW(NumExpr)(3)))) );
+    CHECK( ! (NEW(LetExpr)("x", NEW(NumExpr)(3), NEW(AddExpr)(NEW(NumExpr)(2), NEW(NumExpr)(3))))
+          ->equals(NEW(VarExpr)("y")) );
   }
   
   SECTION( "interp" ) {
-    CHECK( (new LetExpr("this", new NumExpr(3), new AddExpr(new NumExpr(2), new NumExpr(3))))->interp()
-          ->equals(new NumVal(5)));
-    CHECK( (new LetExpr("this", new NumExpr(3), new AddExpr(new VarExpr("this"), new NumExpr(2))))->interp()
-          ->equals(new NumVal(5)));
+    CHECK( (NEW(LetExpr)("this", NEW(NumExpr)(3), NEW(AddExpr)(NEW(NumExpr)(2), NEW(NumExpr)(3))))->interp(NEW(EmptyEnv)())
+          ->equals(NEW(NumVal)(5)) );
+    CHECK( (NEW(LetExpr)("this", NEW(NumExpr)(3), NEW(AddExpr)(NEW(VarExpr)("this"), NEW(NumExpr)(2))))->interp(NEW(EmptyEnv)())
+          ->equals(NEW(NumVal)(5)) );
   }
   
   SECTION( "subst" ) {
-    CHECK( (new LetExpr("x", new NumExpr(5), new AddExpr(new NumExpr(2), new VarExpr("x"))))
-          ->subst(("x"), new NumVal(7))
-          ->equals(new LetExpr("x", new NumExpr(5), new AddExpr(new NumExpr(2), new NumExpr(7)))) );
-    CHECK( (new LetExpr("x", new NumExpr(5), new AddExpr(new NumExpr(2), new VarExpr("x"))))
-          ->subst(("y"), new NumVal(7))
-          ->equals(new LetExpr("x", new NumExpr(5), new AddExpr(new NumExpr(2), new VarExpr("x")))) );
-    CHECK( (new LetExpr("x", new NumExpr(4), new MultExpr(new NumExpr(2), new VarExpr("x"))))
-          ->subst(("x"), new NumVal(11))
-          ->equals(new LetExpr("x", new NumExpr(4), new MultExpr(new NumExpr(2), new NumExpr(11)))) );
-    CHECK( (new LetExpr("y", new AddExpr(new VarExpr("y"), new NumExpr(1)), new VarExpr("x")))
-          ->subst(("y"), new NumVal(7))
-          ->equals(new LetExpr("y", new AddExpr(new NumExpr(7), new NumExpr(1)), new VarExpr("x"))) );
-    CHECK( (new LetExpr("y", new AddExpr(new VarExpr("y"), new NumExpr(1)), new VarExpr("y")))
-          ->subst(("y"), new NumVal(7))
-          ->equals(new LetExpr("y", new AddExpr(new NumExpr(7), new NumExpr(1)), new NumExpr(7))) );
-    CHECK( (new LetExpr("y", new MultExpr(new VarExpr("y"), new NumExpr(1)), new VarExpr("y")))
-          ->subst(("y"), new NumVal(7))
-          ->equals(new LetExpr("y", new MultExpr(new NumExpr(7), new NumExpr(1)), new NumExpr(7))) );
+    CHECK( (NEW(LetExpr)("x", NEW(NumExpr)(5), NEW(AddExpr)(NEW(NumExpr)(2), NEW(VarExpr)("x"))))
+          ->subst(("x"), NEW(NumVal)(7))
+          ->equals(NEW(LetExpr)("x", NEW(NumExpr)(5), NEW(AddExpr)(NEW(NumExpr)(2), NEW(NumExpr)(7)))) );
+    CHECK( (NEW(LetExpr)("x", NEW(NumExpr)(5), NEW(AddExpr)(NEW(NumExpr)(2), NEW(VarExpr)("x"))))
+          ->subst(("y"), NEW(NumVal)(7))
+          ->equals(NEW(LetExpr)("x", NEW(NumExpr)(5), NEW(AddExpr)(NEW(NumExpr)(2), NEW(VarExpr)("x")))) );
+    CHECK( (NEW(LetExpr)("x", NEW(NumExpr)(4), NEW(MultExpr)(NEW(NumExpr)(2), NEW(VarExpr)("x"))))
+          ->subst(("x"), NEW(NumVal)(11))
+          ->equals(NEW(LetExpr)("x", NEW(NumExpr)(4), NEW(MultExpr)(NEW(NumExpr)(2), NEW(NumExpr)(11)))) );
+    CHECK( (NEW(LetExpr)("y", NEW(AddExpr)(NEW(VarExpr)("y"), NEW(NumExpr)(1)), NEW(VarExpr)("x")))
+          ->subst(("y"), NEW(NumVal)(7))
+          ->equals(NEW(LetExpr)("y", NEW(AddExpr)(NEW(NumExpr)(7), NEW(NumExpr)(1)), NEW(VarExpr)("x"))) );
+    CHECK( (NEW(LetExpr)("y", NEW(AddExpr)(NEW(VarExpr)("y"), NEW(NumExpr)(1)), NEW(VarExpr)("y")))
+          ->subst(("y"), NEW(NumVal)(7))
+          ->equals(NEW(LetExpr)("y", NEW(AddExpr)(NEW(NumExpr)(7), NEW(NumExpr)(1)), NEW(NumExpr)(7))) );
+    CHECK( (NEW(LetExpr)("y", NEW(MultExpr)(NEW(VarExpr)("y"), NEW(NumExpr)(1)), NEW(VarExpr)("y")))
+          ->subst(("y"), NEW(NumVal)(7))
+          ->equals(NEW(LetExpr)("y", NEW(MultExpr)(NEW(NumExpr)(7), NEW(NumExpr)(1)), NEW(NumExpr)(7))) );
   }
   
   SECTION( "optimize" ) {
-    CHECK( (new LetExpr("x", new NumExpr(3), new AddExpr(new NumExpr(2), new NumExpr(3))))->optimize()
-          ->equals(new NumExpr(5)) );
-    CHECK( (new LetExpr("x", new NumExpr(3), new MultExpr(new NumExpr(2), new NumExpr(3))))->optimize()
-          ->equals(new NumExpr(6)) );
-    CHECK( (new LetExpr("x", new VarExpr("y"), new AddExpr(new NumExpr(2), new NumExpr(3))))->optimize()
-          ->equals(new LetExpr("x", new VarExpr("y"), new NumExpr(5))));
-    CHECK( (new LetExpr("x", new NumExpr(15), new AddExpr(new NumExpr(2), new VarExpr("x"))))->optimize()
-          ->equals(new NumExpr(17)) );
-    CHECK( (new LetExpr("y", new NumExpr(3), new AddExpr(new NumExpr(2), new VarExpr("x"))))->optimize()
-          ->equals(new AddExpr(new NumExpr(2), new VarExpr("x"))) );
-    CHECK( (new LetExpr("y", new AddExpr(new NumExpr(5), new VarExpr("y")), new AddExpr(new NumExpr(2), new VarExpr("x"))))->optimize()
-          ->equals(new LetExpr("y", new AddExpr(new NumExpr(5), new VarExpr("y")), new AddExpr(new NumExpr(2), new VarExpr("x")))) );
+    CHECK( (NEW(LetExpr)("x", NEW(NumExpr)(3), NEW(AddExpr)(NEW(NumExpr)(2), NEW(NumExpr)(3))))->optimize()
+          ->equals(NEW(NumExpr)(5)) );
+    CHECK( (NEW(LetExpr)("x", NEW(NumExpr)(3), NEW(MultExpr)(NEW(NumExpr)(2), NEW(NumExpr)(3))))->optimize()
+          ->equals(NEW(NumExpr)(6)) );
+    CHECK( (NEW(LetExpr)("x", NEW(VarExpr)("y"), NEW(AddExpr)(NEW(NumExpr)(2), NEW(NumExpr)(3))))->optimize()
+          ->equals(NEW(LetExpr)("x", NEW(VarExpr)("y"), NEW(NumExpr)(5))) );
+    CHECK( (NEW(LetExpr)("x", NEW(NumExpr)(15), NEW(AddExpr)(NEW(NumExpr)(2), NEW(VarExpr)("x"))))->optimize()
+          ->equals(NEW(NumExpr)(17)) );
+    CHECK( (NEW(LetExpr)("y", NEW(NumExpr)(3), NEW(AddExpr)(NEW(NumExpr)(2), NEW(VarExpr)("x"))))->optimize()
+          ->equals(NEW(AddExpr)(NEW(NumExpr)(2), NEW(VarExpr)("x"))) );
+    CHECK( (NEW(LetExpr)("y", NEW(AddExpr)(NEW(NumExpr)(5), NEW(VarExpr)("y")), NEW(AddExpr)(NEW(NumExpr)(2), NEW(VarExpr)("x"))))->optimize()
+          ->equals(NEW(LetExpr)("y", NEW(AddExpr)(NEW(NumExpr)(5), NEW(VarExpr)("y")), NEW(AddExpr)(NEW(NumExpr)(2), NEW(VarExpr)("x")))) );
   }
   
   SECTION( "containsVarExpr" ) {
-    CHECK( (new LetExpr("x", new NumExpr(10), new NumExpr(3)))->containsVarExpr() );
+    CHECK( (NEW(LetExpr)("x", NEW(NumExpr)(10), NEW(NumExpr)(3)))->containsVarExpr() );
   }
   
   SECTION( "to_string" ) {
-    CHECK( (new LetExpr("x", new NumExpr(15), new AddExpr(new NumExpr(2), new VarExpr("x"))))->to_string()
+    CHECK( (NEW(LetExpr)("x", NEW(NumExpr)(15), NEW(AddExpr)(NEW(NumExpr)(2), NEW(VarExpr)("x"))))->to_string()
           == ("(_let x = 15 _in (2 + x))") );
-    CHECK( (new LetExpr("x", new NumExpr(3), new AddExpr(new VarExpr("x"), new NumExpr(3))))->to_string()
+    CHECK( (NEW(LetExpr)("x", NEW(NumExpr)(3), NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))))->to_string()
           == ("(_let x = 3 _in (x + 3))"));
-    CHECK( (new LetExpr("x", new NumExpr(4), new LetExpr("y", new NumExpr(6), new MultExpr(new VarExpr("x"), new NumExpr(3)))))->to_string()
+    CHECK( (NEW(LetExpr)("x", NEW(NumExpr)(4), NEW(LetExpr)("y", NEW(NumExpr)(6), NEW(MultExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3)))))->to_string()
           == ("(_let x = 4 _in (_let y = 6 _in (x * 3)))"));
   }
 }
 
 TEST_CASE( "BoolExpr" ) {
   SECTION( "equals" ) {
-    CHECK( (new BoolExpr(true))->equals(new BoolExpr(true)) );
-    CHECK( ! (new BoolExpr(false))->equals(new BoolExpr(true)) );
-    CHECK( ! (new BoolExpr(true))->equals(new VarExpr("true")) );
+    CHECK( (NEW(BoolExpr)(true))->equals(NEW(BoolExpr)(true)) );
+    CHECK( ! (NEW(BoolExpr)(false))->equals(NEW(BoolExpr)(true)) );
+    CHECK( ! (NEW(BoolExpr)(true))->equals(NEW(VarExpr)("true")) );
   }
   
   SECTION( "interp" ) {
-    CHECK( (new BoolExpr(true))->interp()
-          ->equals(new BoolVal(true)) );
+    CHECK( (NEW(BoolExpr)(true))->interp(NEW(EmptyEnv)())
+          ->equals(NEW(BoolVal)(true)) );
   }
   
   SECTION( "subst" ) {
-    CHECK( (new BoolExpr(true))->subst("x", new BoolVal(true))
-          ->equals(new BoolExpr(true)));
+    CHECK( (NEW(BoolExpr)(true))->subst("x", NEW(BoolVal)(true))
+          ->equals(NEW(BoolExpr)(true)) );
   }
   
   SECTION( "optimize" ) {
-    CHECK( (new BoolExpr(true))->optimize()
-          ->equals(new BoolExpr(true)));
-    CHECK( (new BoolExpr(false))->optimize()
-          ->equals(new BoolExpr(false)));
+    CHECK( (NEW(BoolExpr)(true))->optimize()
+          ->equals(NEW(BoolExpr)(true)) );
+    CHECK( (NEW(BoolExpr)(false))->optimize()
+          ->equals(NEW(BoolExpr)(false)) );
   }
   
   SECTION( "containsVarExpr" ) {
-    CHECK( (new BoolExpr(true))->containsVarExpr()
-          == (false));
+    CHECK( (NEW(BoolExpr)(true))->containsVarExpr()
+          == (false) );
   }
   
   SECTION( "to_string" ) {
-    CHECK( (new BoolExpr(true))->to_string()
-          == ("(_true)"));
-    CHECK( (new BoolExpr(false))->to_string()
-          == ("(_false)"));
+    CHECK( (NEW(BoolExpr)(true))->to_string()
+          == ("_true") );
+    CHECK( (NEW(BoolExpr)(false))->to_string()
+          == ("_false") );
   }
 }
 
 TEST_CASE( "IfExpr" ) {
   SECTION( "equals" ) {
-    CHECK( (new IfExpr(new BoolExpr(true),
-            new NumExpr(1),
-            new NumExpr(2)))
-          ->equals(new IfExpr(new BoolExpr(true),
-                              new NumExpr(1),
-                              new NumExpr(2))) );
-    CHECK( ! (new IfExpr(new BoolExpr(true),
-      new NumExpr(1),
-      new NumExpr(2)))
-          ->equals(new NumExpr(1)) );
+    CHECK( (NEW(IfExpr)(NEW(BoolExpr)(true),
+            NEW(NumExpr)(1),
+            NEW(NumExpr)(2)))
+          ->equals(NEW(IfExpr)(NEW(BoolExpr)(true),
+                              NEW(NumExpr)(1),
+                              NEW(NumExpr)(2))) );
+    CHECK( ! (NEW(IfExpr)(NEW(BoolExpr)(true),
+                         NEW(NumExpr)(1),
+                         NEW(NumExpr)(2)))
+          ->equals(NEW(NumExpr)(1)) );
   }
   
   SECTION( "interp" ) {
-    CHECK( (new IfExpr(new BoolExpr(true),
-                       new NumExpr(1),
-                       new NumExpr(2)))->interp()
-          ->equals(new NumVal(1)) );
-    CHECK( (new IfExpr(new BoolExpr(false),
-                       new AddExpr(new VarExpr("x"), new NumExpr(4)),
-                       new NumExpr(2)))->interp()
-          ->equals(new NumVal(2)) );
+    CHECK( (NEW(IfExpr)(NEW(BoolExpr)(true),
+                       NEW(NumExpr)(1),
+                       NEW(NumExpr)(2)))->interp(NEW(EmptyEnv)())
+          ->equals(NEW(NumVal)(1)) );
+    CHECK( (NEW(IfExpr)(NEW(BoolExpr)(false),
+                       NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(4)),
+                       NEW(NumExpr)(2)))->interp(NEW(EmptyEnv)())
+          ->equals(NEW(NumVal)(2)) );
   }
   
   SECTION( "subst" ) {
-    CHECK( (new IfExpr(new BoolExpr(true),
-                       new VarExpr("x"),
-                       new NumExpr(2)))
-          ->subst("x", new NumVal(3))
-          ->equals(new IfExpr(new BoolExpr(true),
-                              new NumExpr(3),
-                              new NumExpr(2))) );
-    CHECK( (new IfExpr(new BoolExpr(true),
-                       new AddExpr(new VarExpr("x"), new NumExpr(4)),
-                       new MultExpr(new VarExpr("x"), new NumExpr(2))))
-          ->subst("x", new NumVal(3))
-          ->equals(new IfExpr(new BoolExpr(true),
-                              new AddExpr(new NumExpr(3), new NumExpr(4)),
-                              new MultExpr(new NumExpr(3), new NumExpr(2)))) );
-    CHECK( (new IfExpr(new VarExpr("x"),
-                       new VarExpr("x"),
-                       new NumExpr(2)))
-          ->subst("x", new NumVal(3))
-          ->equals(new IfExpr(new NumExpr(3),
-                              new NumExpr(3),
-                              new NumExpr(2))) );
+    CHECK( (NEW(IfExpr)(NEW(BoolExpr)(true),
+                       NEW(VarExpr)("x"),
+                       NEW(NumExpr)(2)))
+          ->subst("x", NEW(NumVal)(3))
+          ->equals(NEW(IfExpr)(NEW(BoolExpr)(true),
+                              NEW(NumExpr)(3),
+                              NEW(NumExpr)(2))) );
+    CHECK( (NEW(IfExpr)(NEW(BoolExpr)(true),
+                       NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(4)),
+                       NEW(MultExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(2))))
+          ->subst("x", NEW(NumVal)(3))
+          ->equals(NEW(IfExpr)(NEW(BoolExpr)(true),
+                              NEW(AddExpr)(NEW(NumExpr)(3), NEW(NumExpr)(4)),
+                              NEW(MultExpr)(NEW(NumExpr)(3), NEW(NumExpr)(2)))) );
+    CHECK( (NEW(IfExpr)(NEW(VarExpr)("x"),
+                       NEW(VarExpr)("x"),
+                       NEW(NumExpr)(2)))
+          ->subst("x", NEW(NumVal)(3))
+          ->equals(NEW(IfExpr)(NEW(NumExpr)(3),
+                              NEW(NumExpr)(3),
+                              NEW(NumExpr)(2))) );
   }
   
   SECTION( "optimize" ) {
-    CHECK( (new IfExpr(new BoolExpr(true),new NumExpr(3),new VarExpr("x")))->optimize()
-          ->equals(new NumExpr(3)) );
-    CHECK( (new IfExpr(new BoolExpr(false),new NumExpr(3),new NumExpr(5)))->optimize()
-          ->equals(new NumExpr(5)) );
-    CHECK( (new IfExpr(new VarExpr("x"),new NumExpr(3),new VarExpr("y")))->optimize()
-          ->equals((new IfExpr(new VarExpr("x"),new NumExpr(3),new VarExpr("y")))) );
+    CHECK( (NEW(IfExpr)(NEW(BoolExpr)(true),NEW(NumExpr)(3),NEW(VarExpr)("x")))->optimize()
+          ->equals(NEW(NumExpr)(3)) );
+    CHECK( (NEW(IfExpr)(NEW(BoolExpr)(false),NEW(NumExpr)(3),NEW(NumExpr)(5)))->optimize()
+          ->equals(NEW(NumExpr)(5)) );
+    CHECK( (NEW(IfExpr)(NEW(VarExpr)("x"),NEW(NumExpr)(3),NEW(VarExpr)("y")))->optimize()
+          ->equals((NEW(IfExpr)(NEW(VarExpr)("x"),NEW(NumExpr)(3),NEW(VarExpr)("y")))) );
   }
   
   SECTION( "containsVarExpr" ) {
-    CHECK( (new IfExpr(new BoolExpr(true), new AddExpr(new VarExpr("x"), new NumExpr(4)), new NumExpr(3)))->containsVarExpr() );
+    CHECK( (NEW(IfExpr)(NEW(BoolExpr)(true), NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(4)),
+                       NEW(NumExpr)(3)))->containsVarExpr() );
   }
   
   SECTION( "to_string" ) {
-    CHECK( (new IfExpr(new BoolExpr(true), new NumExpr(3), new NumExpr(4)))->to_string()
-          == ("(_if (_true) _then 3 _else 4)"));
-    CHECK( (new IfExpr(new AddExpr(new VarExpr("x"), new NumExpr(3)), new NumExpr(3), new NumExpr(4)))->to_string()
+    CHECK( (NEW(IfExpr)(NEW(BoolExpr)(true), NEW(NumExpr)(3), NEW(NumExpr)(4)))->to_string()
+          == ("(_if _true _then 3 _else 4)"));
+    CHECK( (NEW(IfExpr)(NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3)), NEW(NumExpr)(3), NEW(NumExpr)(4)))->to_string()
           == ("(_if (x + 3) _then 3 _else 4)"));
   }
 }
 
 TEST_CASE( "CompExpr" ) {
   SECTION( "equals" ) {
-    CHECK( (new CompExpr(new NumExpr(1), new NumExpr(1)))
-          ->equals(new CompExpr(new NumExpr(1), new NumExpr(1))) );
-    CHECK( ! (new CompExpr(new NumExpr(1), new NumExpr(1)))
-          ->equals(new NumExpr(1)) );
+    CHECK( (NEW(CompExpr)(NEW(NumExpr)(1), NEW(NumExpr)(1)))
+          ->equals(NEW(CompExpr)(NEW(NumExpr)(1), NEW(NumExpr)(1))) );
+    CHECK( ! (NEW(CompExpr)(NEW(NumExpr)(1), NEW(NumExpr)(1)))
+          ->equals(NEW(NumExpr)(1)) );
   }
   
   SECTION( "interp" ) {
-    CHECK( (new CompExpr(new NumExpr(3), new NumExpr(3)))->interp()
-          ->equals(new BoolVal(true)) );
+    CHECK( (NEW(CompExpr)(NEW(NumExpr)(3), NEW(NumExpr)(3)))->interp(NEW(EmptyEnv)())
+          ->equals(NEW(BoolVal)(true)) );
   }
   
   SECTION( "subst" ) {
-    CHECK( (new CompExpr(new VarExpr("x"), new VarExpr("y")))
-          ->subst("x", new NumVal(4))
-          ->equals(new CompExpr(new NumExpr(4), new VarExpr("y"))) );
+    CHECK( (NEW(CompExpr)(NEW(VarExpr)("x"), NEW(VarExpr)("y")))
+          ->subst("x", NEW(NumVal)(4))
+          ->equals(NEW(CompExpr)(NEW(NumExpr)(4), NEW(VarExpr)("y"))) );
   }
   
   SECTION( "optimize" ) {
-    CHECK( (new CompExpr(new AddExpr(new NumExpr(3), new NumExpr(4)), new NumExpr(3)))->optimize()
-          ->equals(new BoolExpr(false)) );
-    CHECK( (new CompExpr(new AddExpr(new VarExpr("x"), new NumExpr(4)), new NumExpr(3)))->optimize()
-          ->equals(new CompExpr(new AddExpr(new VarExpr("x"), new NumExpr(4)), new NumExpr(3))) );
-    CHECK( (new CompExpr(new VarExpr("x"), new VarExpr("x")))->optimize()
-          ->equals(new CompExpr(new VarExpr("x"), new VarExpr("x"))) );
+    CHECK( (NEW(CompExpr)(NEW(AddExpr)(NEW(NumExpr)(3), NEW(NumExpr)(4)), NEW(NumExpr)(3)))->optimize()
+          ->equals(NEW(BoolExpr)(false)) );
+    CHECK( (NEW(CompExpr)(NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(4)), NEW(NumExpr)(3)))->optimize()
+          ->equals(NEW(CompExpr)(NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(4)), NEW(NumExpr)(3))) );
+    CHECK( (NEW(CompExpr)(NEW(VarExpr)("x"), NEW(VarExpr)("x")))->optimize()
+          ->equals(NEW(CompExpr)(NEW(VarExpr)("x"), NEW(VarExpr)("x"))) );
   }
   
   SECTION( "containsVarExpr" ) {
-    CHECK( ! (new CompExpr(new NumExpr(3), new NumExpr(3)))->containsVarExpr() );
+    CHECK( ! (NEW(CompExpr)(NEW(NumExpr)(3), NEW(NumExpr)(3)))->containsVarExpr() );
   }
   
   SECTION( "to_string" ) {
-    CHECK( (new CompExpr(new NumExpr(3), new NumExpr(3)))->to_string()
+    CHECK( (NEW(CompExpr)(NEW(NumExpr)(3), NEW(NumExpr)(3)))->to_string()
     == ("(3 == 3)") );
   }
 }
 
 TEST_CASE( "FunExpr" ) {
   SECTION( "equals" ) {
-    CHECK( (new FunExpr("x", new NumExpr(3)))
-          ->equals(new FunExpr("x", new NumExpr(3))) );
-    CHECK( ! (new FunExpr("x", new NumExpr(3)))
-          ->equals(new NumExpr(3)) );
+    CHECK( (NEW(FunExpr)("x", NEW(NumExpr)(3)))
+          ->equals(NEW(FunExpr)("x", NEW(NumExpr)(3))) );
+    CHECK( ! (NEW(FunExpr)("x", NEW(NumExpr)(3)))
+          ->equals(NEW(NumExpr)(3)) );
   }
   
   SECTION( "interp" ) {
-    CHECK( (new FunExpr("x", new NumExpr(3)))->interp()
-          ->equals(new FunVal("x", new NumExpr(3))) );
+    CHECK( (NEW(FunExpr)("x", NEW(NumExpr)(3)))->interp(NEW(EmptyEnv)())
+          ->equals(NEW(FunVal)("x", NEW(NumExpr)(3), NEW(EmptyEnv)())) );
   }
   
   SECTION( "subst" ) {
-    CHECK( (new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3))))->subst("x", new NumVal(3))
-    ->equals(new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3)))) );
+    CHECK( (NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))))->subst("x", NEW(NumVal)(3))
+    ->equals(NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3)))) );
   }
 
   SECTION( "optimize" ) {
-    CHECK( (new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3))))->optimize()
-          ->equals(new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3)))) );
-    CHECK( (new FunExpr("x", new AddExpr(new NumExpr(3), new NumExpr(3))))->optimize()
-          ->equals(new FunExpr("x", new NumExpr(6))) );
+    CHECK( (NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))))->optimize()
+          ->equals(NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3)))) );
+    CHECK( (NEW(FunExpr)("x", NEW(AddExpr)(NEW(NumExpr)(3), NEW(NumExpr)(3))))->optimize()
+          ->equals(NEW(FunExpr)("x", NEW(NumExpr)(6))) );
   }
   
   SECTION( "containsVarExpr" ) {
-    CHECK( (new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3))))->containsVarExpr() );
+    CHECK( (NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))))->containsVarExpr() );
   }
   
   SECTION( "to_string" ) {
-    CHECK( (new FunExpr("x", new NumExpr(3)))->to_string()
+    CHECK( (NEW(FunExpr)("x", NEW(NumExpr)(3)))->interp(NEW(EmptyEnv)())->to_string()
           == ("(_fun (x) 3)") );
-    CHECK( (new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3))))->to_string()
+    CHECK( (NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))))->to_string()
           == ("(_fun (x) (x + 3))") );
   }
 }
 
 TEST_CASE( "CallExpr" ) {
   SECTION( "equals" ) {
-    CHECK( (new CallExpr(new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3))), new NumExpr(3)))
-          ->equals(new CallExpr(new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3))), new NumExpr(3))) );
-    CHECK( ! (new CallExpr(new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3))), new NumExpr(3)))
-          ->equals(new VarExpr("x")) );
+    CHECK( (NEW(CallExpr)(NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))), NEW(NumExpr)(3)))
+          ->equals(NEW(CallExpr)(NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))), NEW(NumExpr)(3))) );
+    CHECK( ! (NEW(CallExpr)(NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))), NEW(NumExpr)(3)))
+          ->equals(NEW(VarExpr)("x")) );
   }
   
   SECTION( "interp" ) {
-    CHECK( (new CallExpr(new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3))), new NumExpr(3)))->interp()
-          ->equals(new NumVal(6)) );
+    CHECK( (NEW(CallExpr)(NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))), NEW(NumExpr)(3)))->interp(NEW(EmptyEnv)())
+          ->equals(NEW(NumVal)(6)) );
   }
   
   SECTION( "subst" ) {
-    CHECK( (new CallExpr(new FunExpr("x", new NumExpr(4)), new NumExpr(3)))->subst("x", new NumVal(2))
-          ->equals(new CallExpr(new FunExpr("x", new NumExpr(4)), new NumExpr(3))) );
-    CHECK( (new CallExpr(new FunExpr("x", new NumExpr(4)), new NumExpr(3)))->subst("x", new NumVal(2))->to_string()
+    CHECK( (NEW(CallExpr)(NEW(FunExpr)("x", NEW(NumExpr)(4)), NEW(NumExpr)(3)))->subst("x", NEW(NumVal)(2))
+          ->equals(NEW(CallExpr)(NEW(FunExpr)("x", NEW(NumExpr)(4)), NEW(NumExpr)(3))) );
+    CHECK( (NEW(CallExpr)(NEW(FunExpr)("x", NEW(NumExpr)(4)), NEW(NumExpr)(3)))->subst("x", NEW(NumVal)(2))->to_string()
           == "(_fun (x) 4) (3)" );
-    CHECK( (new CallExpr(new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3))), new NumExpr(4)))
-          ->subst("x", new NumVal(2))
-          ->equals(new CallExpr(new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3))), new NumExpr(4))) );
-    CHECK( (new CallExpr(new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3))), new NumExpr(4)))
-          ->subst("x", new NumVal(2))->to_string()
+    CHECK( (NEW(CallExpr)(NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))), NEW(NumExpr)(4)))
+          ->subst("x", NEW(NumVal)(2))
+          ->equals(NEW(CallExpr)(NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))), NEW(NumExpr)(4))) );
+    CHECK( (NEW(CallExpr)(NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))), NEW(NumExpr)(4)))
+          ->subst("x", NEW(NumVal)(2))->to_string()
           == ("(_fun (x) (x + 3)) (4)") );
   }
   
   SECTION( "optimize" ) {
-    CHECK( (new CallExpr(new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3))), new NumExpr(3)))->optimize()
-    ->equals(new CallExpr(new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3))), new NumExpr(3))) );
+    CHECK( (NEW(CallExpr)(NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))), NEW(NumExpr)(3)))->optimize()
+    ->equals(NEW(CallExpr)(NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))), NEW(NumExpr)(3))) );
   }
   
   SECTION( "containsVarExpr" ) {
-    CHECK( (new CallExpr(new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3))), new NumExpr(3)))->containsVarExpr() );
+    CHECK( (NEW(CallExpr)(NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))), NEW(NumExpr)(3)))->containsVarExpr() );
   }
   
   SECTION( "to_string" ) {
-    CHECK( (new CallExpr(new FunExpr("x", new AddExpr(new VarExpr("x"), new NumExpr(3))), new NumExpr(5)))->to_string()
+    CHECK( (NEW(CallExpr)(NEW(FunExpr)("x", NEW(AddExpr)(NEW(VarExpr)("x"), NEW(NumExpr)(3))), NEW(NumExpr)(5)))->to_string()
           == "(_fun (x) (x + 3)) (5)" );
+  }
+  
+  SECTION( "test macros conversion" ) {
+    PTR(Expr) add_e = NEW(AddExpr) (NEW(VarExpr)("x"), NEW(NumExpr)(5));
+    PTR(Val) three_v = NEW(NumVal)(3);
+    CHECK( add_e->subst("x", three_v)->to_string() == "(3 + 5)");
   }
 }

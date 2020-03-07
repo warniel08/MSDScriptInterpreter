@@ -10,8 +10,11 @@
 #define parse_hpp
 
 #include <iostream>
-#include "expr.hpp"
+#include "pointer.hpp"
 
-Expr *parse(std::istream &in);
+class Env;
+class Expr;
+
+PTR(Expr) parse(std::istream &in);
 
 #endif /* parse_hpp */

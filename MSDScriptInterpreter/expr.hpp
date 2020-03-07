@@ -10,25 +10,28 @@
 #define expr_hpp
 
 #include <string>
-#include "value.hpp"
+#include "pointer.hpp"
 
 /*
  * Objects to be returned by the parser
  * */
-class Expr{
+class Val;
+class Env;
+
+class Expr {
 public:
-  virtual bool equals(Expr *e) = 0;
+  virtual bool equals(PTR(Expr) e) = 0;
   
   // To compute the number value of an expression,
   // assuming that all variables are 0
-  virtual Val *interp() = 0;
+  virtual PTR(Val) interp(PTR(Env) env) = 0;
   
   // To substitute a number in place of a variable
-  virtual Expr *subst(std::string var, Val *val) = 0;
+  virtual PTR(Expr) subst(std::string var, PTR(Val) val) = 0;
   
-  virtual Expr *optimize() = 0;
+  virtual PTR(Expr) optimize() = 0;
   
-  // return true or false if Expr * has a variable
+  // return true or false if PTR(Expr)  has a variable
   virtual bool containsVarExpr() = 0;
   
   virtual std::string to_string() = 0;
@@ -37,13 +40,14 @@ public:
 class NumExpr : public Expr {
 public:
   int rep;
+  PTR(Val) val;
   
   NumExpr(int rep);
-  bool equals(Expr *e);
+  bool equals(PTR(Expr) e);
   
-  Val *interp();
-  Expr *subst(std::string var, Val *val);
-  Expr *optimize();
+  PTR(Val) interp(PTR(Env) env);
+  PTR(Expr) subst(std::string var, PTR(Val) val);
+  PTR(Expr) optimize();
   
   bool containsVarExpr();
   std::string to_string();
@@ -51,15 +55,15 @@ public:
 
 class AddExpr : public Expr {
 public:
-  Expr *lhs;
-  Expr *rhs;
+  PTR(Expr) lhs;
+  PTR(Expr) rhs;
   
-  AddExpr(Expr *lhs, Expr *rhs);
-  bool equals(Expr *e);
+  AddExpr(PTR(Expr) lhs, PTR(Expr) rhs);
+  bool equals(PTR(Expr) e);
   
-  Val *interp();
-  Expr *subst(std::string var, Val *val);
-  Expr *optimize();
+  PTR(Val) interp(PTR(Env) env);
+  PTR(Expr) subst(std::string var, PTR(Val) val);
+  PTR(Expr) optimize();
   
   bool containsVarExpr();
   std::string to_string();
@@ -67,15 +71,15 @@ public:
 
 class MultExpr : public Expr {
 public:
-  Expr *lhs;
-  Expr *rhs;
+  PTR(Expr) lhs;
+  PTR(Expr) rhs;
   
-  MultExpr(Expr *lhs, Expr *rhs);
-  bool equals(Expr *e);
+  MultExpr(PTR(Expr) lhs, PTR(Expr) rhs);
+  bool equals(PTR(Expr) e);
   
-  Val *interp();
-  Expr *subst(std::string var, Val *val);
-  Expr *optimize();
+  PTR(Val) interp(PTR(Env) env);
+  PTR(Expr) subst(std::string var, PTR(Val) val);
+  PTR(Expr) optimize();
   
   bool containsVarExpr();
   std::string to_string();
@@ -86,11 +90,11 @@ public:
   std::string name;
   
   VarExpr(std::string name);
-  bool equals(Expr *e);
+  bool equals(PTR(Expr) e);
   
-  Val *interp();
-  Expr *subst(std::string var, Val *val);
-  Expr *optimize();
+  PTR(Val) interp(PTR(Env) env);
+  PTR(Expr) subst(std::string var, PTR(Val) val);
+  PTR(Expr) optimize();
   
   bool containsVarExpr();
   std::string to_string();
@@ -99,15 +103,15 @@ public:
 class LetExpr : public Expr {
 public:
   std::string name;
-  Expr *rhs;
-  Expr *body;
+  PTR(Expr) rhs;
+  PTR(Expr) body;
   
-  LetExpr(std::string name, Expr *rhs, Expr *body);
-  bool equals(Expr *e);
+  LetExpr(std::string name, PTR(Expr) rhs, PTR(Expr) body);
+  bool equals(PTR(Expr) e);
   
-  Val *interp();
-  Expr *subst(std::string var, Val *val);
-  Expr *optimize();
+  PTR(Val) interp(PTR(Env) env);
+  PTR(Expr) subst(std::string var, PTR(Val) val);
+  PTR(Expr) optimize();
   
   bool containsVarExpr();
   std::string to_string();
@@ -118,11 +122,11 @@ public:
   bool rep;
   
   BoolExpr(bool rep);
-  bool equals(Expr *e);
+  bool equals(PTR(Expr) e);
   
-  Val *interp();
-  Expr *subst(std::string var, Val *val);
-  Expr *optimize();
+  PTR(Val) interp(PTR(Env) env);
+  PTR(Expr) subst(std::string var, PTR(Val) val);
+  PTR(Expr) optimize();
   
   bool containsVarExpr();
   std::string to_string();
@@ -130,16 +134,16 @@ public:
 
 class IfExpr : public Expr {
 public:
-  Expr *test_part;
-  Expr *then_part;
-  Expr *else_part;
+  PTR(Expr) test_part;
+  PTR(Expr) then_part;
+  PTR(Expr) else_part;
   
-  IfExpr(Expr *test_part, Expr *then_part, Expr *else_part);
-  bool equals(Expr *e);
+  IfExpr(PTR(Expr) test_part, PTR(Expr) then_part, PTR(Expr) else_part);
+  bool equals(PTR(Expr) e);
   
-  Val *interp();
-  Expr *subst(std::string var, Val *val);
-  Expr *optimize();
+  PTR(Val) interp(PTR(Env) env);
+  PTR(Expr) subst(std::string var, PTR(Val) val);
+  PTR(Expr) optimize();
   
   bool containsVarExpr();
   std::string to_string();
@@ -147,15 +151,15 @@ public:
 
 class CompExpr : public Expr {
 public:
-  Expr *lhs;
-  Expr *rhs;
+  PTR(Expr) lhs;
+  PTR(Expr) rhs;
   
-  CompExpr(Expr *lhs, Expr *rhs);
-  bool equals(Expr *e);
+  CompExpr(PTR(Expr) lhs, PTR(Expr) rhs);
+  bool equals(PTR(Expr) e);
   
-  Val *interp();
-  Expr *subst(std::string var, Val *val);
-  Expr *optimize();
+  PTR(Val) interp(PTR(Env) env);
+  PTR(Expr) subst(std::string var, PTR(Val) val);
+  PTR(Expr) optimize();
   
   bool containsVarExpr();
   std::string to_string();
@@ -164,14 +168,14 @@ public:
 class FunExpr : public Expr {
 public:
   std::string formal_arg;
-  Expr *body;
+  PTR(Expr) body;
   
-  FunExpr(std::string formal_arg, Expr *body);
-  bool equals(Expr *e);
+  FunExpr(std::string formal_arg, PTR(Expr) body);
+  bool equals(PTR(Expr) e);
   
-  Val *interp();
-  Expr *subst(std::string var, Val *val);
-  Expr *optimize();
+  PTR(Val) interp(PTR(Env) env);
+  PTR(Expr) subst(std::string var, PTR(Val) val);
+  PTR(Expr) optimize();
   
   bool containsVarExpr();
   std::string to_string();
@@ -179,15 +183,15 @@ public:
 
 class CallExpr : public Expr {
 public:
-  Expr *to_be_called;
-  Expr *actual_arg;
+  PTR(Expr) to_be_called;
+  PTR(Expr) actual_arg;
   
-  CallExpr(Expr *lhs, Expr *rhs);
-  bool equals(Expr *e);
+  CallExpr(PTR(Expr) lhs, PTR(Expr) rhs);
+  bool equals(PTR(Expr) e);
   
-  Val *interp();
-  Expr *subst(std::string var, Val *val);
-  Expr *optimize();
+  PTR(Val) interp(PTR(Env) env);
+  PTR(Expr) subst(std::string var, PTR(Val) val);
+  PTR(Expr) optimize();
   
   bool containsVarExpr();
   std::string to_string();

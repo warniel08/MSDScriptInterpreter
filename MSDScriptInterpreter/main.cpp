@@ -7,21 +7,43 @@
 //
 
 #include <iostream>
+#include "pointer.hpp"
+#include "expr.hpp"
+#include "env.hpp"
 #include "parse.hpp"
+#include "value.hpp"
 
 #define CATCH_CONFIG_RUNNER
 #include "catch.hpp"
 
-int main(int argc, char** argv) {
-  try {
-    Expr *e = parse(std::cin);
-    if ((argc > 1) && !strcmp(argv[1], "--optimize")){
-      std::cout << e->optimize()->to_string() << std::endl;
-    }else
-      std::cout << e->interp()->to_string() << std::endl;
-    return 0;
-  } catch (std::runtime_error exn) {
-    std::cerr << exn.what() << std::endl;
-    return 1;
-  }
+int main(int argc, char **argv) {
+    try {
+        bool optimize_mode = false;
+        PTR(Expr) e;
+        if ((argc > 1) && !strcmp(argv[1], "--opt")){
+            optimize_mode = true;
+            argc--;
+            argv--;
+        }
+        if (argc > 1) {
+            std::ifstream prog_in(argv[1]);
+            e = parse(prog_in);
+        } else {
+            e = parse(std::cin);
+        }
+        try {
+            if(optimize_mode){
+                std::cout << e->optimize()->to_string() << std::endl;
+            } else {
+                std::cout << e->interp(NEW(EmptyEnv)())->to_string() << std::endl;
+            }
+        }catch (std::runtime_error err) {
+            std::cerr << err.what() << std::endl;
+            return 2;
+        }
+        return 0;
+    } catch (std::runtime_error err) {
+        std::cerr << err.what() << std::endl;
+        return 1;
+    }
 }
